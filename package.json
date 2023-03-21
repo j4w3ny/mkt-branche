@@ -33,6 +33,7 @@
     "@babel/preset-env": "^7.16.4",
     "@babel/preset-typescript": "^7.16.0",
     "@types/jest": "^27.0.3",
+    "@types/lodash": "^4.14.191",
     "@typescript-eslint/eslint-plugin": "^5.5.0",
     "@typescript-eslint/parser": "^5.5.0",
     "eslint": "^8.7.0",
@@ -46,5 +47,8 @@
   },
   "peerDependencies": {
     "snarkyjs": "0.9.*"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21"
   }
 }
