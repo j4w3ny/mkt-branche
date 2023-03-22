@@ -11,6 +11,16 @@ import {
   Proof,
   verify,
 } from 'snarkyjs';
+
+export {
+  DataChunk32,
+  DataChunk8,
+  DataChunkSize,
+  MKTWitness32,
+  MKTWitness8,
+  MKTJSON,
+  MKTData,
+};
 /**
  * ## Note
  * Size: 32 Fields(1024 bytes = 1KB)
@@ -114,7 +124,7 @@ interface MKTJSON {
  *
  * Serializes and deserializes Merkle Tree for storing purpose.
  */
-export class MKTData {
+class MKTData {
   mkt: MerkleTree;
   chunkSize: DataChunkSize;
   constructor(mkt: MerkleTree, chunkSize: DataChunkSize) {
