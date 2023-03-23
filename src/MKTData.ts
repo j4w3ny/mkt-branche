@@ -81,16 +81,16 @@ const Verifier = Experimental.ZkProgram({
   methods: {
     init8: {
       privateInputs: [DataChunk8, MKTWitness8],
-      method(initialTreeHash, data, wit) {
-        const hash = Poseidon.hash(data);
+      method(initialTreeHash, data: DataChunk8, wit) {
+        const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
         initialTreeHash.assertEquals(treeRoot);
       },
     },
     init32: {
       privateInputs: [DataChunk32, MKTWitness32],
-      method(initialTreeHash, data, wit) {
-        const hash = Poseidon.hash(data);
+      method(initialTreeHash, data: DataChunk32, wit) {
+        const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
         initialTreeHash.assertEquals(treeRoot);
       },
@@ -100,9 +100,9 @@ const Verifier = Experimental.ZkProgram({
      */
     verifyR8: {
       privateInputs: [DataChunk8, MKTWitness8, SelfProof<Field>],
-      method(state, data, wit, proof) {
+      method(state, data: DataChunk8, wit, proof) {
         proof.verify();
-        const hash = Poseidon.hash(data);
+        const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
         state.assertEquals(treeRoot);
       },
@@ -114,9 +114,9 @@ const Verifier = Experimental.ZkProgram({
      */
     verifyR32: {
       privateInputs: [DataChunk32, MKTWitness32, SelfProof<Field>],
-      method(initialTreeHash, data, wit, proof) {
+      method(initialTreeHash, data: DataChunk32, wit, proof) {
         proof.verify();
-        const hash = Poseidon.hash(data);
+        const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
         initialTreeHash.assertEquals(treeRoot);
       },
