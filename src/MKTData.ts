@@ -1,4 +1,4 @@
-import { chunk, extend } from 'lodash';
+import { chunk } from 'lodash-es';
 import {
   Experimental,
   Field,
@@ -32,6 +32,9 @@ class DataChunk32 extends Struct<(typeof Field)[]>([...Array(32).fill(Field)]) {
     });
     return chunks;
   }
+  toFields() {
+    return [...Array(32).keys()].map((i) => this[i]);
+  }
 }
 
 /**
@@ -53,6 +56,18 @@ class DataChunk8 extends Struct([
       return new DataChunk8(chunk);
     });
     return chunks;
+  }
+  toFields() {
+    return [
+      this[0],
+      this[1],
+      this[2],
+      this[3],
+      this[4],
+      this[5],
+      this[6],
+      this[7],
+    ];
   }
 }
 
@@ -157,7 +172,9 @@ class MKTData {
     const tree = new MerkleTree(height);
 
     for (let i = 0; i < chunks.length; i++) {
-      const hash = Poseidon.hash(chunks[i]);
+      const chunk = chunks[i].toFields();
+
+      const hash = Poseidon.hash(chunk);
       tree.setLeaf(BigInt(i), hash);
     }
 
