@@ -11,6 +11,7 @@ import {
   Proof,
   verify,
 } from 'snarkyjs';
+import { BaseMerkleWitness } from 'snarkyjs/dist/node/lib/merkle_tree';
 
 export {
   DataChunk32,
@@ -80,7 +81,7 @@ const Verifier = Experimental.ZkProgram({
   publicInput: Field,
   methods: {
     init8: {
-      privateInputs: [DataChunk8, MKTWitness8],
+      privateInputs: [DataChunk8, BaseMerkleWitness],
       method(initialTreeHash, data: DataChunk8, wit) {
         const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
@@ -88,7 +89,7 @@ const Verifier = Experimental.ZkProgram({
       },
     },
     init32: {
-      privateInputs: [DataChunk32, MKTWitness32],
+      privateInputs: [DataChunk32, BaseMerkleWitness],
       method(initialTreeHash, data: DataChunk32, wit) {
         const hash = Poseidon.hash(data.toFields());
         const treeRoot = wit.calculateRoot(hash);
@@ -99,7 +100,7 @@ const Verifier = Experimental.ZkProgram({
      * Verify 8-Fields DataChunks recursively
      */
     verifyR8: {
-      privateInputs: [DataChunk8, MKTWitness8, SelfProof<Field>],
+      privateInputs: [DataChunk8, BaseMerkleWitness, SelfProof<Field>],
       method(state, data: DataChunk8, wit, proof) {
         proof.verify();
         const hash = Poseidon.hash(data.toFields());
@@ -113,7 +114,7 @@ const Verifier = Experimental.ZkProgram({
      * Referrence: {@link DataChunk32}
      */
     verifyR32: {
-      privateInputs: [DataChunk32, MKTWitness32, SelfProof<Field>],
+      privateInputs: [DataChunk32, BaseMerkleWitness, SelfProof<Field>],
       method(initialTreeHash, data: DataChunk32, wit, proof) {
         proof.verify();
         const hash = Poseidon.hash(data.toFields());
@@ -220,7 +221,7 @@ class MKTData {
         const initialProof = await Verifier.init8(
           this.mkt.getRoot(),
           chunks[0],
-          new MKTWitness8(this.mkt.getWitness(0n))
+          new (MerkleWitness(this.mkt.height))(this.mkt.getWitness(0n))
         );
         // the first chunk is already verified, ignore it
         let currentProof = initialProof;
@@ -228,7 +229,9 @@ class MKTData {
           const proof = await Verifier.verifyR8(
             this.mkt.getRoot(),
             chunks[i],
-            new MKTWitness8(this.mkt.getWitness(BigInt(i))),
+            new (MerkleWitness(this.mkt.height))(
+              this.mkt.getWitness(BigInt(i))
+            ),
             currentProof
           );
           currentProof = proof;
@@ -241,7 +244,7 @@ class MKTData {
         const initialProof = await Verifier.init32(
           this.mkt.getRoot(),
           chunks[0],
-          new MKTWitness32(this.mkt.getWitness(0n))
+          new (MerkleWitness(this.mkt.height))(this.mkt.getWitness(0n))
         );
         let currentProof = initialProof;
         // the first chunk is already verified, ignore it
@@ -249,7 +252,9 @@ class MKTData {
           const proof = await Verifier.verifyR32(
             this.mkt.getRoot(),
             chunks[i],
-            new MKTWitness32(this.mkt.getWitness(BigInt(i))),
+            new (MerkleWitness(this.mkt.height))(
+              this.mkt.getWitness(BigInt(i))
+            ),
             currentProof
           );
           currentProof = proof;
