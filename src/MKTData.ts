@@ -83,48 +83,48 @@ class MKTWitness32 extends MerkleWitness(32) {}
 const Verifier = Experimental.ZkProgram({
   publicInput: Field,
   methods: {
-    init8: {
-      privateInputs: [DataHash8, BaseMerkleWitness],
-      method(initialTreeHash, data: DataHash8, wit) {
-        const hash = Poseidon.hash(data.toFields());
-        const treeRoot = wit.calculateRoot(hash);
-        initialTreeHash.assertEquals(treeRoot);
-      },
-    },
-    init32: {
-      privateInputs: [DataHash32, BaseMerkleWitness],
-      method(initialTreeHash, data: DataHash32, wit) {
-        const hash = Poseidon.hash(data.toFields());
-        const treeRoot = wit.calculateRoot(hash);
-        initialTreeHash.assertEquals(treeRoot);
-      },
-    },
-    /**
-     * Verify 8-Fields DataChunks recursively
-     */
-    verifyR8: {
-      privateInputs: [DataHash8, BaseMerkleWitness, SelfProof<Field>],
-      method(state, data: DataHash8, wit, proof) {
-        proof.verify();
-        const hash = Poseidon.hash(data.toFields());
-        const treeRoot = wit.calculateRoot(hash);
-        state.assertEquals(treeRoot);
-      },
-    },
-    /**
-     * Verify 32-Fields DataChunks recursively
-     *
-     * Referrence: {@link DataHash32}
-     */
-    verifyR32: {
-      privateInputs: [DataHash32, BaseMerkleWitness, SelfProof<Field>],
-      method(initialTreeHash, data: DataHash32, wit, proof) {
-        proof.verify();
-        const hash = Poseidon.hash(data.toFields());
-        const treeRoot = wit.calculateRoot(hash);
-        initialTreeHash.assertEquals(treeRoot);
-      },
-    },
+    // init8: {
+    //   privateInputs: [DataHash8, BaseMerkleWitness],
+    //   method(initialTreeHash, data: DataHash8, wit) {
+    //     const hash = Poseidon.hash(data.toFields());
+    //     const treeRoot = wit.calculateRoot(hash);
+    //     initialTreeHash.assertEquals(treeRoot);
+    //   },
+    // },
+    // init32: {
+    //   privateInputs: [DataHash32, BaseMerkleWitness],
+    //   method(initialTreeHash, data: DataHash32, wit) {
+    //     const hash = Poseidon.hash(data.toFields());
+    //     const treeRoot = wit.calculateRoot(hash);
+    //     initialTreeHash.assertEquals(treeRoot);
+    //   },
+    // },
+    // /**
+    //  * Verify 8-Fields DataChunks recursively
+    //  */
+    // verifyR8: {
+    //   privateInputs: [DataHash8, BaseMerkleWitness, SelfProof<Field>],
+    //   method(state, data: DataHash8, wit, proof) {
+    //     proof.verify();
+    //     const hash = Poseidon.hash(data.toFields());
+    //     const treeRoot = wit.calculateRoot(hash);
+    //     state.assertEquals(treeRoot);
+    //   },
+    // },
+    // /**
+    //  * Verify 32-Fields DataChunks recursively
+    //  *
+    //  * Referrence: {@link DataHash32}
+    //  */
+    // verifyR32: {
+    //   privateInputs: [DataHash32, BaseMerkleWitness, SelfProof<Field>],
+    //   method(initialTreeHash, data: DataHash32, wit, proof) {
+    //     proof.verify();
+    //     const hash = Poseidon.hash(data.toFields());
+    //     const treeRoot = wit.calculateRoot(hash);
+    //     initialTreeHash.assertEquals(treeRoot);
+    //   },
+    // },
     /**
      * Verify hash in MKFS (Merkle Tree-based File System)
      */
@@ -164,6 +164,8 @@ class MKFS {
   file2Index: Record<string, bigint>;
   constructor(height: number) {
     this.mkt = new MerkleTree(height);
+    this.currentIndex = 0n;
+    this.file2Index = {};
   }
   /**
    * Add a file to the Merkle Tree

@@ -27,7 +27,9 @@ describe('MKFS', () => {
   });
 
   it('Verify File', async () => {
+    console.log('verifying file');
     const { verificationKey } = await Verifier.compile();
+    console.log('successfully Commpiled Verifier', verificationKey);
     vkey = verificationKey;
     const result = await mkfs.verify(verificationKey, raw, 0n);
     expect(result).toBe(true);
