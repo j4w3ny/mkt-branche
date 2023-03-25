@@ -11,6 +11,8 @@ import {
   Proof,
   verify,
   MerkleMap,
+  Circuit,
+  provable,
 } from 'snarkyjs';
 import { BaseMerkleWitness } from 'snarkyjs/dist/node/lib/merkle_tree';
 
@@ -77,65 +79,61 @@ class DataHash8 extends Struct([
 
 class MKTWitness8 extends MerkleWitness(8) {}
 class MKTWitness32 extends MerkleWitness(32) {}
+
+class MKTHashes8 extends Struct([
+  ...Array<[typeof Field, typeof MKTWitness8]>(calculateLeafCounts(4)).fill([
+    Field,
+    MKTWitness8,
+  ]),
+]) {
+  data() {
+    return this;
+  }
+}
+const Wit8 = provable(
+  Array<[typeof Field, typeof MKTWitness8]>(calculateLeafCounts(4)).fill([
+    Field,
+    MKTWitness8,
+  ])
+);
+type Hashes8 = [Field, MKTWitness8][];
+function calculateLeafCounts(height: number) {
+  return 2 ** height;
+}
 /**
  * NOTE: Proof should be uploaded to a public blockchain so that it can be verified.
  */
 const Verifier = Experimental.ZkProgram({
   publicInput: Field,
   methods: {
-    // init8: {
-    //   privateInputs: [DataHash8, BaseMerkleWitness],
-    //   method(initialTreeHash, data: DataHash8, wit) {
-    //     const hash = Poseidon.hash(data.toFields());
-    //     const treeRoot = wit.calculateRoot(hash);
-    //     initialTreeHash.assertEquals(treeRoot);
-    //   },
-    // },
-    // init32: {
-    //   privateInputs: [DataHash32, BaseMerkleWitness],
-    //   method(initialTreeHash, data: DataHash32, wit) {
-    //     const hash = Poseidon.hash(data.toFields());
-    //     const treeRoot = wit.calculateRoot(hash);
-    //     initialTreeHash.assertEquals(treeRoot);
-    //   },
-    // },
-    // /**
-    //  * Verify 8-Fields DataChunks recursively
-    //  */
-    // verifyR8: {
-    //   privateInputs: [DataHash8, BaseMerkleWitness, SelfProof<Field>],
-    //   method(state, data: DataHash8, wit, proof) {
-    //     proof.verify();
-    //     const hash = Poseidon.hash(data.toFields());
-    //     const treeRoot = wit.calculateRoot(hash);
-    //     state.assertEquals(treeRoot);
-    //   },
-    // },
-    // /**
-    //  * Verify 32-Fields DataChunks recursively
-    //  *
-    //  * Referrence: {@link DataHash32}
-    //  */
-    // verifyR32: {
-    //   privateInputs: [DataHash32, BaseMerkleWitness, SelfProof<Field>],
-    //   method(initialTreeHash, data: DataHash32, wit, proof) {
-    //     proof.verify();
-    //     const hash = Poseidon.hash(data.toFields());
-    //     const treeRoot = wit.calculateRoot(hash);
-    //     initialTreeHash.assertEquals(treeRoot);
-    //   },
-    // },
     /**
      * Verify hash in MKFS (Merkle Tree-based File System)
      */
     verifyFSHash: {
-      privateInputs: [Field, BaseMerkleWitness],
+      privateInputs: [Field, MKTWitness8],
       method(treeState, dataHash, wit) {
         wit.calculateRoot(dataHash).assertEquals(treeState);
       },
     },
+    verifyFSHashBatch: {
+      privateInputs: [Wit8],
+      method(treeState, dataHash) {
+        for (const [hash, wit] of dataHash) {
+          wit.calculateRoot(hash).assertEquals(treeState);
+        }
+      },
+    },
+    verifyFSHashBatchR: {
+      privateInputs: [Wit8, SelfProof<Field>],
+      method(treeState, dataHash, proof) {
+        proof.verify();
+        for (const [hash, wit] of dataHash) {
+          wit.calculateRoot(hash).assertEquals(treeState);
+        }
+      },
+    },
     verifyFSHashR: {
-      privateInputs: [Field, BaseMerkleWitness, SelfProof<Field>],
+      privateInputs: [Field, MKTWitness8, SelfProof<Field>],
       method(treeState, dataHash, wit, proof) {
         proof.verify();
         wit.calculateRoot(dataHash).assertEquals(treeState);
@@ -146,6 +144,7 @@ const Verifier = Experimental.ZkProgram({
 
 type DataChunkSize = 8 | 32;
 
+type TreeHeight = 8;
 /**
  * JSON of Merkle Tree Data
  */
@@ -153,7 +152,7 @@ type DataChunkSize = 8 | 32;
 interface MKTJSON {
   data: Record<string, string>;
   file2Index: Record<string, bigint>;
-  height: number;
+  height: TreeHeight;
   currentIndex: bigint;
   //   chunkSize: DataChunkSize;
 }
@@ -162,7 +161,7 @@ class MKFS {
   mkt: MerkleTree;
   currentIndex: bigint;
   file2Index: Record<string, bigint>;
-  constructor(height: number) {
+  constructor(height: TreeHeight) {
     this.mkt = new MerkleTree(height);
     this.currentIndex = 0n;
     this.file2Index = {};
@@ -186,11 +185,10 @@ class MKFS {
    */
   async verify(verificationKey: string, data: Uint8Array, index: bigint) {
     const root = this.mkt.getRoot();
-    // const { verificationKey } = await Verifier.compile();
+
     const hash = Poseidon.hash(Encoding.bytesToFields(data));
     const rawWit = this.mkt.getWitness(index);
-    const wit = new (MerkleWitness(this.mkt.height))(rawWit);
-
+    const wit = new MKTWitness8(rawWit);
     const proof = await Verifier.verifyFSHash(root, hash, wit);
     return verify(proof, verificationKey);
   }
@@ -204,26 +202,28 @@ class MKFS {
    */
 
   async verifyAll(verificationKey: string, hashs: [bigint, Field][]) {
-    let currentProof: Proof<Field> | undefined = undefined;
+    // let currentProof: Proof<Field> | undefined = undefined;
     const root = this.mkt.getRoot();
     if (BigInt(hashs.length) !== this.mkt.leafCount)
       throw new Error('Invalid hash list');
-    for (const [index, hash] of hashs) {
-      const rawWit = this.mkt.getWitness(index);
-      const wit = new (MerkleWitness(this.mkt.height))(rawWit);
-      if (currentProof === undefined) {
-        currentProof = await Verifier.verifyFSHash(root, hash, wit);
-      } else {
-        currentProof = await Verifier.verifyFSHashR(
-          root,
-          hash,
-          wit,
-          currentProof
-        );
-      }
+
+    let hashList = hashs.map(([index, hash]) => {
+      return [Field(hash), new MKTWitness8(this.mkt.getWitness(index))] as [
+        Field,
+        MKTWitness8
+      ];
+    });
+    const hashLists = chunk(hashList, calculateLeafCounts(4));
+    let currentProof = await Verifier.verifyFSHashBatch(root, hashLists[0]);
+    for (let i = 1; i < hashLists.length; i++) {
+      currentProof = await Verifier.verifyFSHashBatchR(
+        root,
+        hashLists[1],
+        currentProof
+      );
     }
 
-    return currentProof !== undefined && verify(currentProof, verificationKey);
+    return verify(currentProof, verificationKey);
   }
   toJSON(): MKTJSON {
     let records: Record<string, string> = {};
@@ -234,7 +234,7 @@ class MKFS {
     return {
       data: records,
       file2Index: this.file2Index,
-      height: this.mkt.height,
+      height: this.mkt.height as TreeHeight,
       currentIndex: this.currentIndex,
     };
   }

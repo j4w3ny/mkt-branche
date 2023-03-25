@@ -27,9 +27,7 @@ describe('MKFS', () => {
   });
 
   it('Verify File', async () => {
-    console.log('verifying file');
     const { verificationKey } = await Verifier.compile();
-    console.log('successfully Commpiled Verifier', verificationKey);
     vkey = verificationKey;
     const result = await mkfs.verify(verificationKey, raw, 0n);
     expect(result).toBe(true);
@@ -38,8 +36,10 @@ describe('MKFS', () => {
   it('Verify Whole Tree', async () => {
     const fileHash = Poseidon.hash(Encoding.bytesToFields(raw));
     let hashs: [bigint, Field][] = [];
-    for (let i = 0n; i < mkt.leafCount; i++) {
-      hashs.push([i, fileHash]);
+    hashs.push([0n, fileHash]);
+    for (let i = 1n; i < mkt.leafCount; i++) {
+      const hash = Field(0);
+      hashs.push([i, hash]);
     }
     const result = await mkfs.verifyAll(vkey, hashs);
     expect(result).toBe(true);
