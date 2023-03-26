@@ -25,7 +25,7 @@
     "doc:gen": "typedoc src/index.ts"
   },
   "lint-staged": {
-    "**/*": [
+    "src/*": [
       "eslint src/* --fix",
       "prettier --write --ignore-unknown"
     ]
