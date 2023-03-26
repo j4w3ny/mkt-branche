@@ -1,5 +1,5 @@
 {
-  "name": "mkt-branche",
+  "name": "mkt-fs",
   "version": "0.1.0",
   "description": "",
   "author": "",
@@ -21,7 +21,8 @@
     "prepare": "husky install",
     "test": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js",
     "testw": "node --experimental-vm-modules --experimental-wasm-threads node_modules/jest/bin/jest.js --watch",
-    "lint": "npx eslint src/* --fix"
+    "lint": "npx eslint src/* --fix",
+    "doc:gen": "typedoc src/index.ts"
   },
   "lint-staged": {
     "**/*": [
@@ -43,6 +44,7 @@
     "lint-staged": "^11.0.1",
     "prettier": "^2.3.2",
     "ts-jest": "^27.0.7",
+    "typedoc": "^0.23.28",
     "typescript": "^4.7.2"
   },
   "peerDependencies": {

@@ -25,6 +25,7 @@ export {
   MKTJSON,
   MKFS,
   Verifier,
+  Poseidon,
   //   MKTData,
 };
 /**
@@ -80,23 +81,13 @@ class DataHash8 extends Struct([
 class MKTWitness8 extends MerkleWitness(8) {}
 class MKTWitness32 extends MerkleWitness(32) {}
 
-class MKTHashes8 extends Struct([
-  ...Array<[typeof Field, typeof MKTWitness8]>(calculateLeafCounts(4)).fill([
-    Field,
-    MKTWitness8,
-  ]),
-]) {
-  data() {
-    return this;
-  }
-}
 const Wit8 = provable(
   Array<[typeof Field, typeof MKTWitness8]>(calculateLeafCounts(4)).fill([
     Field,
     MKTWitness8,
   ])
 );
-type Hashes8 = [Field, MKTWitness8][];
+
 function calculateLeafCounts(height: number) {
   return 2 ** height;
 }
@@ -151,7 +142,7 @@ type TreeHeight = 8;
 
 interface MKTJSON {
   data: Record<string, string>;
-  file2Index: Record<string, bigint>;
+  fileHash2Index: Record<string, bigint>;
   height: TreeHeight;
   currentIndex: bigint;
   //   chunkSize: DataChunkSize;
@@ -160,11 +151,11 @@ interface MKTJSON {
 class MKFS {
   mkt: MerkleTree;
   currentIndex: bigint;
-  file2Index: Record<string, bigint>;
+  fileHash2Index: Record<string, bigint>;
   constructor(height: TreeHeight) {
     this.mkt = new MerkleTree(height);
     this.currentIndex = 0n;
-    this.file2Index = {};
+    this.fileHash2Index = {};
   }
   /**
    * Add a file to the Merkle Tree
@@ -173,8 +164,27 @@ class MKFS {
   add(data: Uint8Array) {
     const hash = Poseidon.hash(Encoding.bytesToFields(data));
     this.mkt.setLeaf(this.currentIndex, hash);
-    this.file2Index[hash.toString()] = this.currentIndex;
+    this.fileHash2Index[hash.toString()] = this.currentIndex;
     this.currentIndex += 1n;
+  }
+  getIndex(hash: string) {
+    return this.fileHash2Index[hash];
+  }
+  getIndexByContent(data: Uint8Array) {
+    const hash = Poseidon.hash(Encoding.bytesToFields(data));
+    return this.getIndex(hash.toString());
+  }
+  toHashes(datas: Uint8Array[]) {
+    return datas.map((data, idx) => {
+      const hash =
+        data.length === 0
+          ? Field(0)
+          : Poseidon.hash(Encoding.bytesToFields(data));
+      return [BigInt(idx), hash] as [bigint, Field];
+    });
+  }
+  get leafCount() {
+    return this.mkt.leafCount;
   }
   /**
    * Verify if a file is in the Merkle Tree
@@ -193,7 +203,7 @@ class MKFS {
     return verify(proof, verificationKey);
   }
   /**
-   * Verify the whole Merkle Tree with a list of hashes
+   * Verify the whole Merkle Tree with an order list of hashes
    *
    * hashs should be fullfilled according to the leafCount of the Merkle Tree
    * @param verificationKey
@@ -202,12 +212,11 @@ class MKFS {
    */
 
   async verifyAll(verificationKey: string, hashs: [bigint, Field][]) {
-    // let currentProof: Proof<Field> | undefined = undefined;
     const root = this.mkt.getRoot();
     if (BigInt(hashs.length) !== this.mkt.leafCount)
       throw new Error('Invalid hash list');
 
-    let hashList = hashs.map(([index, hash]) => {
+    const hashList = hashs.map(([index, hash]) => {
       return [Field(hash), new MKTWitness8(this.mkt.getWitness(index))] as [
         Field,
         MKTWitness8
@@ -233,7 +242,7 @@ class MKFS {
 
     return {
       data: records,
-      file2Index: this.file2Index,
+      fileHash2Index: this.fileHash2Index,
       height: this.mkt.height as TreeHeight,
       currentIndex: this.currentIndex,
     };
@@ -245,7 +254,7 @@ class MKFS {
     }
     let fs = new MKFS(json.height);
     fs.mkt = mkt;
-    fs.file2Index = json.file2Index;
+    fs.fileHash2Index = json.fileHash2Index;
     fs.currentIndex = json.currentIndex;
     return fs;
   }
